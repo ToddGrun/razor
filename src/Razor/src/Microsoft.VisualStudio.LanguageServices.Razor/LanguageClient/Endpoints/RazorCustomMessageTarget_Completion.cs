@@ -28,7 +28,7 @@ internal partial class RazorCustomMessageTarget
             throw new ArgumentNullException(nameof(inlineCompletionParams));
         }
 
-        var hostDocumentUri = inlineCompletionParams.TextDocument.Uri;
+        var hostDocumentUri = inlineCompletionParams.TextDocument.DocumentUri;
         if (!_documentManager.TryGetDocument(hostDocumentUri, out var documentSnapshot))
         {
             return null;
@@ -44,7 +44,7 @@ internal partial class RazorCustomMessageTarget
         {
             Context = inlineCompletionParams.Context,
             Position = inlineCompletionParams.Position,
-            TextDocument = inlineCompletionParams.TextDocument.WithUri(csharpDoc.Uri),
+            TextDocument = inlineCompletionParams.TextDocument.WithUri(csharpDoc.DocumentUri),
             Options = inlineCompletionParams.Options,
         };
 

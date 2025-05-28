@@ -79,7 +79,7 @@ internal static class WebTools
                 GetMethod(Type, nameof(CreateBuffer)));
 
         public ITextSnapshot CreateBuffer(
-            Uri documentUri,
+            DocumentUri documentUri,
             string contentTypeName,
             string initialContent,
             int snapshotVersionFromLSP)

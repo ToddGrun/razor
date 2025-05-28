@@ -31,7 +31,7 @@ internal sealed class HtmlFormattingService : IDisposable
         }
     }
 
-    public Task<TextEdit[]?> GetDocumentFormattingEditsAsync(ILoggerFactory loggerFactory, Uri uri, string generatedHtml, bool insertSpaces, int tabSize)
+    public Task<TextEdit[]?> GetDocumentFormattingEditsAsync(ILoggerFactory loggerFactory, DocumentUri uri, string generatedHtml, bool insertSpaces, int tabSize)
     {
         var request = $$"""
             {
@@ -49,7 +49,7 @@ internal sealed class HtmlFormattingService : IDisposable
         return CallWebToolsApplyFormattedEditsHandlerAsync(loggerFactory, request, uri, generatedHtml);
     }
 
-    public Task<TextEdit[]?> GetOnTypeFormattingEditsAsync(ILoggerFactory loggerFactory, Uri uri, string generatedHtml, Position position, bool insertSpaces, int tabSize)
+    public Task<TextEdit[]?> GetOnTypeFormattingEditsAsync(ILoggerFactory loggerFactory, DocumentUri uri, string generatedHtml, Position position, bool insertSpaces, int tabSize)
     {
         var generatedHtmlSource = SourceText.From(generatedHtml, Encoding.UTF8);
         var absoluteIndex = generatedHtmlSource.GetRequiredAbsoluteIndex(position);
@@ -76,7 +76,7 @@ internal sealed class HtmlFormattingService : IDisposable
         return CallWebToolsApplyFormattedEditsHandlerAsync(loggerFactory, request, uri, generatedHtml);
     }
 
-    private async Task<TextEdit[]?> CallWebToolsApplyFormattedEditsHandlerAsync(ILoggerFactory loggerFactory, string serializedValue, Uri documentUri, string generatedHtml)
+    private async Task<TextEdit[]?> CallWebToolsApplyFormattedEditsHandlerAsync(ILoggerFactory loggerFactory, string serializedValue, DocumentUri documentUri, string generatedHtml)
     {
         var contentTypeService = ExportProvider.GetExportedValue<IContentTypeRegistryService>();
 
