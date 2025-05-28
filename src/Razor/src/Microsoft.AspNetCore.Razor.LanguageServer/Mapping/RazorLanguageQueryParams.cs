@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Razor.LanguageServer.Mapping;
 internal class RazorLanguageQueryParams
 {
     [JsonPropertyName("uri")]
-    public required Uri Uri { get; set; }
+    public required DocumentUri Uri { get; set; }
 
     [JsonPropertyName("position")]
     public required Position Position { get; set; }

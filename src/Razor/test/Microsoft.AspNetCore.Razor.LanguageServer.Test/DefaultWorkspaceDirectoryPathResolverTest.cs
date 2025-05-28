@@ -3,6 +3,7 @@
 
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Razor.Test.Common;
+using Microsoft.CodeAnalysis.LanguageServer;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -42,7 +43,7 @@ public class DefaultWorkspaceDirectoryPathResolverTest(ITestOutputHelper testOut
         var initializeParams = new InitializeParams()
         {
             RootPath = "/somethingelse",
-            RootUri = LspFactory.CreateFilePathUri(initialWorkspaceDirectory),
+            RootUri = LspFactory.CreateFilePathUri(initialWorkspaceDirectory).GetRequiredParsedUri(),
         };
 #pragma warning restore CS0618 // Type or member is obsolete
 
