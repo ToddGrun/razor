@@ -14,7 +14,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Microsoft.AspNetCore.Razor.Language.CodeGeneration;
 
-public sealed partial class CodeWriter : IDisposable
+public partial class CodeWriter : IDisposable
 {
     // This is the size of each "page", which are arrays of ReadOnlyMemory<char>.
     // This number was chosen arbitrarily as a "best guess". If changed, care should be
@@ -32,7 +32,7 @@ public sealed partial class CodeWriter : IDisposable
     // Note that LinkedList<T> was chosen to avoid copying for especially large generated code files.
     // In addition, because LinkedList<T> provides direct access to the last element, appending
     // is extremely efficient.
-    private readonly LinkedList<ReadOnlyMemory<char>[]> _pages;
+    protected readonly LinkedList<ReadOnlyMemory<char>[]> _pages;
     private int _pageOffset;
     private char? _lastChar;
 
@@ -320,7 +320,7 @@ public sealed partial class CodeWriter : IDisposable
     public CodeWriter WriteLine([InterpolatedStringHandlerArgument("")] ref WriteInterpolatedStringHandler handler)
         => WriteLine();
 
-    public SourceText GetText()
+    public virtual SourceText GetText()
     {
         using var reader = new Reader(_pages, Length);
         return SourceText.From(reader, Length, Encoding.UTF8);
@@ -332,12 +332,72 @@ public sealed partial class CodeWriter : IDisposable
         return new Reader(pages, pages.Count);
     }
 
-    private sealed class Reader(LinkedList<ReadOnlyMemory<char>[]> pages, int length) : TextReader
+    internal sealed class Reader(LinkedList<ReadOnlyMemory<char>[]> pages, int length) : TextReader
     {
         private LinkedListNode<ReadOnlyMemory<char>[]>? _page = pages.First;
-        private int _remainingLength = length;
         private int _chunkIndex;
         private int _charIndex;
+        private int _position;
+
+        public int Length => length;
+
+        public void SetPosition(int position)
+        {
+            ArgHelper.ThrowIfNegative(position);
+            ArgHelper.ThrowIfGreaterThan(position, Length);
+
+            if (position == _position)
+            {
+                // No change in position, so nothing to do.
+                return;
+            }
+            else if (position == Length)
+            {
+                _page = null;
+                _chunkIndex = -1;
+                _charIndex = -1;
+
+                return;
+            }
+
+            var deltaPosition = position - _position;
+
+            var page = _page;
+            if (page is null)
+            {
+                // TODO: Validate this, may need to reset to zero
+                return;
+            }
+
+            deltaPosition += _charIndex;
+            var chunkIndex = _chunkIndex;
+
+            Debug.Assert(chunkIndex >= 0);
+
+            // for now, only handle the moving forward case
+            var sourceLen = page.Value[chunkIndex].Length;
+            while (deltaPosition > sourceLen)
+            {
+                deltaPosition -= sourceLen;
+                if (chunkIndex < page.Value.Length)
+                {
+                    chunkIndex++;
+                }
+                else
+                {
+                    page = page.Next!;
+                    chunkIndex = 0;
+                }
+
+                sourceLen = page.Value[chunkIndex].Length;
+            }
+
+            _page = page;
+            _chunkIndex = chunkIndex;
+            _charIndex = deltaPosition;
+
+            _position = position;
+        }
 
         public override int Read()
         {
@@ -349,7 +409,7 @@ public sealed partial class CodeWriter : IDisposable
             _page = page;
             _chunkIndex = chunkIndex;
             _charIndex = charIndex + 1; // Increment the char index for the next read.
-            _remainingLength--;
+            _position++;
 
             return page.Value[chunkIndex].Span[charIndex];
         }
@@ -502,7 +562,7 @@ public sealed partial class CodeWriter : IDisposable
                 _charIndex = -1;
             }
 
-            _remainingLength -= charsWritten;
+            _position += charsWritten;
 
             return charsWritten;
         }
@@ -514,7 +574,8 @@ public sealed partial class CodeWriter : IDisposable
                 return string.Empty;
             }
 
-            var result = string.Create(_remainingLength, (_page, _chunkIndex, _charIndex), static (destination, state) =>
+            var remainingLength = Length - _position;
+            var result = string.Create(remainingLength, (_page, _chunkIndex, _charIndex), static (destination, state) =>
             {
                 var (page, chunkIndex, charIndex) = state;
 
@@ -558,7 +619,7 @@ public sealed partial class CodeWriter : IDisposable
             _page = null;
             _chunkIndex = -1;
             _charIndex = 1;
-            _remainingLength = 0;
+            _position = Length;
 
             return result;
         }
