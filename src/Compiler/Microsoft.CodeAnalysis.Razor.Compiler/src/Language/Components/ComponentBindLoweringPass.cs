@@ -1043,17 +1043,17 @@ internal class ComponentBindLoweringPass : ComponentIntermediateNodePassBase, IR
     {
         public BindEntry(IntermediateNodeReference<TagHelperDirectiveAttributeIntermediateNode> bindNodeReference)
         {
-            BindNodeReference = bindNodeReference;
+            BindNodeReference = new(bindNodeReference.Node, bindNodeReference.Parent);
             BindNode = bindNodeReference.Node;
         }
 
         public BindEntry(IntermediateNodeReference<TagHelperDirectiveAttributeParameterIntermediateNode> bindNodeReference)
         {
-            BindNodeReference = bindNodeReference;
+            BindNodeReference = new(bindNodeReference.Node, bindNodeReference.Parent);
             BindGetNode = bindNodeReference.Node;
         }
 
-        public IntermediateNodeReference BindNodeReference { get; }
+        public IntermediateNodeReference<IntermediateNode> BindNodeReference { get; }
 
         public TagHelperDirectiveAttributeIntermediateNode BindNode { get; }
 

@@ -142,7 +142,7 @@ internal class ComponentMarkupBlockPass : ComponentIntermediateNodePassBase, IRa
 
         private bool _foundNonHtml;
 
-        public List<IntermediateNodeReference> Trees { get; } = new List<IntermediateNodeReference>();
+        public List<IntermediateNodeReference<IntermediateNode>> Trees { get; } = new List<IntermediateNodeReference<IntermediateNode>>();
 
         public override void VisitDefault(IntermediateNode node)
         {
@@ -191,7 +191,7 @@ internal class ComponentMarkupBlockPass : ComponentIntermediateNodePassBase, IRa
 
             if (!_foundNonHtml)
             {
-                Trees.Add(new IntermediateNodeReference(node, Parent));
+                Trees.Add(new IntermediateNodeReference<IntermediateNode>(node, Parent));
             }
 
             _foundNonHtml = originalState |= _foundNonHtml;
@@ -241,7 +241,7 @@ internal class ComponentMarkupBlockPass : ComponentIntermediateNodePassBase, IRa
 
             if (!_foundNonHtml)
             {
-                Trees.Add(new IntermediateNodeReference(node, Parent));
+                Trees.Add(new IntermediateNodeReference<IntermediateNode>(node, Parent));
             }
 
             _foundNonHtml = originalState |= _foundNonHtml;
@@ -264,9 +264,9 @@ internal class ComponentMarkupBlockPass : ComponentIntermediateNodePassBase, IRa
 
     private class RewriteVisitor : IntermediateNodeWalker
     {
-        private readonly List<IntermediateNodeReference> _trees;
+        private readonly List<IntermediateNodeReference<IntermediateNode>> _trees;
 
-        public RewriteVisitor(List<IntermediateNodeReference> trees)
+        public RewriteVisitor(List<IntermediateNodeReference<IntermediateNode>> trees)
         {
             _trees = trees;
         }

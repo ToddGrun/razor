@@ -21,7 +21,7 @@ internal class ComponentTemplateDiagnosticPass : ComponentIntermediateNodePassBa
             return;
         }
 
-        using var _ = ListPool<IntermediateNodeReference>.GetPooledObject(out var candidates);
+        using var _ = ListPool<IntermediateNodeReference<IntermediateNode>>.GetPooledObject(out var candidates);
 
         var visitor = new Visitor(candidates);
         visitor.Visit(documentNode);
@@ -38,10 +38,10 @@ internal class ComponentTemplateDiagnosticPass : ComponentIntermediateNodePassBa
         }
     }
 
-    private sealed class Visitor(List<IntermediateNodeReference> candidates)
+    private sealed class Visitor(List<IntermediateNodeReference<IntermediateNode>> candidates)
         : IntermediateNodeWalker, IExtensionIntermediateNodeVisitor<TemplateIntermediateNode>
     {
-        private readonly List<IntermediateNodeReference> _candidates = candidates;
+        private readonly List<IntermediateNodeReference<IntermediateNode>> _candidates = candidates;
 
         public void VisitExtension(TemplateIntermediateNode node)
         {
@@ -53,7 +53,7 @@ internal class ComponentTemplateDiagnosticPass : ComponentIntermediateNodePassBa
                                 TagHelperPropertyIntermediateNode or // Inside malformed ref attribute
                                 TagHelperDirectiveAttributeIntermediateNode) // Inside a directive attribute
                 {
-                    _candidates.Add(new IntermediateNodeReference(node, Parent.AssumeNotNull()));
+                    _candidates.Add(new IntermediateNodeReference<IntermediateNode>(node, Parent.AssumeNotNull()));
 
                     // We found a candidate and can stop looking. There's no need to report multiple diagnostics for the same node.
                     break;
