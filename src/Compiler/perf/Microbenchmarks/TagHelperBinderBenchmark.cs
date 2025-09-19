@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using BenchmarkDotNet.Attributes;
 using Microsoft.AspNetCore.Razor.Language;
 
@@ -11,9 +12,9 @@ namespace Microsoft.AspNetCore.Razor.Microbenchmarks;
 public class TagHelperBinderBenchmark
 {
     // We create a number of binders to get a measurable time.
-    private const int Count = 2500;
+    private const int Count = 5000;
 
-    private readonly TagHelperBinder[] _binders = new TagHelperBinder[Count];
+    private readonly ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>>[] _tagNameToDescriptorsMaps = new ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>>[Count];
     private ImmutableArray<TagHelperDescriptor> _tagHelpers;
 
     [ParamsAllValues]
@@ -33,24 +34,60 @@ public class TagHelperBinderBenchmark
     [IterationCleanup]
     public void IterationCleanUp()
     {
-        Array.Clear(_binders);
+        Array.Clear(_tagNameToDescriptorsMaps);
     }
 
-    [Benchmark(Description = "Construct TagHelperBinders")]
-    public void ConstructTagHelperBinders()
+    [Benchmark(Description = "Construct TagHelperBinders (Original)")]
+    public void ConstructTagHelperBinders_Original()
     {
         for (var i = 0; i < Count; i++)
         {
-            _binders[i] = new TagHelperBinder(tagNamePrefix: null, _tagHelpers);
+            TagHelperBinder.ProcessDescriptorsOriginal(_tagHelpers, tagNamePrefix: null, out _tagNameToDescriptorsMaps[i], out _);
         }
     }
 
-    [Benchmark(Description = "Construct TagHelperBinders (with prefix)")]
-    public void ConstructTagHelperBinderWithPrefix()
+    [Benchmark(Description = "Construct TagHelperBinders (Original, with prefix)")]
+    public void ConstructTagHelperBinderWithPrefix_Original()
     {
         for (var i = 0; i < Count; i++)
         {
-            _binders[i] = new TagHelperBinder(tagNamePrefix: null, _tagHelpers);
+            TagHelperBinder.ProcessDescriptorsOriginal(_tagHelpers, tagNamePrefix: "abc", out _tagNameToDescriptorsMaps[i], out _);
+        }
+    }
+
+    [Benchmark(Description = "Construct TagHelperBinders (Commit 1)")]
+    public void ConstructTagHelperBinders_Commit1()
+    {
+        for (var i = 0; i < Count; i++)
+        {
+            TagHelperBinder.ProcessDescriptorsCommit1(_tagHelpers, tagNamePrefix: null, out _tagNameToDescriptorsMaps[i], out _);
+        }
+    }
+
+    [Benchmark(Description = "Construct TagHelperBinders (Commit 1, with prefix)")]
+    public void ConstructTagHelperBinderWithPrefix_Commit1()
+    {
+        for (var i = 0; i < Count; i++)
+        {
+            TagHelperBinder.ProcessDescriptorsCommit1(_tagHelpers, tagNamePrefix: "abc", out _, out _);
+        }
+    }
+
+    [Benchmark(Description = "Construct TagHelperBinders (Commit 3)")]
+    public void ConstructTagHelperBinders_Commit3()
+    {
+        for (var i = 0; i < Count; i++)
+        {
+            TagHelperBinder.ProcessDescriptorsCommit3(_tagHelpers, tagNamePrefix: null, out _, out _);
+        }
+    }
+
+    [Benchmark(Description = "Construct TagHelperBinders (Commit 3, with prefix)")]
+    public void ConstructTagHelperBinderWithPrefix_Commit3()
+    {
+        for (var i = 0; i < Count; i++)
+        {
+            TagHelperBinder.ProcessDescriptorsCommit3(_tagHelpers, tagNamePrefix: "abc", out _, out _);
         }
     }
 }

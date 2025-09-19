@@ -33,10 +33,151 @@ internal sealed class TagHelperBinder
         TagNamePrefix = tagNamePrefix;
         Descriptors = descriptors.NullToEmpty();
 
-        ProcessDescriptors(descriptors, tagNamePrefix, out _tagNameToDescriptorsMap, out _catchAllDescriptors);
+        ProcessDescriptorsCommit3(descriptors, tagNamePrefix, out _tagNameToDescriptorsMap, out _catchAllDescriptors);
     }
 
-    private static void ProcessDescriptors(
+    public static void ProcessDescriptorsOriginal(
+        ImmutableArray<TagHelperDescriptor> descriptors,
+        string? tagNamePrefix,
+        out ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>> tagNameToDescriptorsMap,
+        out ImmutableArray<TagHelperDescriptor> catchAllDescriptors)
+    {
+        using var catchAllBuilder = new PooledArrayBuilder<TagHelperDescriptor>();
+        using var pooledMap = StringDictionaryPool<ImmutableArray<TagHelperDescriptor>.Builder>.OrdinalIgnoreCase.GetPooledObject(out var mapBuilder);
+        using var pooledSet = HashSetPool<TagHelperDescriptor>.GetPooledObject(out var distinctSet);
+
+        // Build a map of tag name -> tag helpers.
+        foreach (var descriptor in descriptors)
+        {
+            if (!distinctSet.Add(descriptor))
+            {
+                // We're already seen this descriptor, skip it.
+                continue;
+            }
+
+            foreach (var rule in descriptor.TagMatchingRules)
+            {
+                if (rule.TagName == TagHelperMatchingConventions.ElementCatchAllName)
+                {
+                    // This is a catch-all descriptor, we can keep track of it separately.
+                    catchAllBuilder.Add(descriptor);
+                }
+                else
+                {
+                    // This is a specific tag name, we need to add it to the map.
+                    //var tagName = tagNamePrefix + rule.TagName;
+                    var builder = mapBuilder.GetOrAdd(rule.TagName, _ => ImmutableArray.CreateBuilder<TagHelperDescriptor>());
+
+                    builder.Add(descriptor);
+                }
+            }
+        }
+
+        // Build the final dictionary with immutable arrays.
+        var map = new Dictionary<string, ImmutableArray<TagHelperDescriptor>>(capacity: mapBuilder.Count, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (key, value) in mapBuilder)
+        {
+            var tagName = tagNamePrefix + key;
+            map.Add(tagName, value.ToImmutableAndClear());
+        }
+
+        tagNameToDescriptorsMap = new ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>>(map);
+
+        // Build the catch all descriptors array.
+        catchAllDescriptors = catchAllBuilder.ToImmutableAndClear();
+    }
+
+    public static void ProcessDescriptorsCommit1(
+        ImmutableArray<TagHelperDescriptor> descriptors,
+        string? tagNamePrefix,
+        out ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>> tagNameToDescriptorsMap,
+        out ImmutableArray<TagHelperDescriptor> catchAllDescriptors)
+    {
+        using var catchAllBuilder = new PooledArrayBuilder<TagHelperDescriptor>();
+        using var pooledSet = HashSetPool<TagHelperDescriptor>.GetPooledObject(out var distinctSet);
+
+        // mapBuilder maps from tag name to either a single TagHelperDescriptor or a List<TagHelperDescriptor>.
+        using var pooledMap = StringDictionaryPool<object>.OrdinalIgnoreCase.GetPooledObject(out var mapBuilder);
+
+        // Build a map of tag name -> tag helpers.
+        foreach (var descriptor in descriptors)
+        {
+            if (!distinctSet.Add(descriptor))
+            {
+                // We're already seen this descriptor, skip it.
+                continue;
+            }
+
+            foreach (var rule in descriptor.TagMatchingRules)
+            {
+                if (rule.TagName == TagHelperMatchingConventions.ElementCatchAllName)
+                {
+                    // This is a catch-all descriptor, we can keep track of it separately.
+                    catchAllBuilder.Add(descriptor);
+                }
+                else
+                {
+                    // This is a specific tag name, we need to add it to the map.
+                    //var tagName = tagNamePrefix + rule.TagName;
+
+                    AddToMapBuilder(mapBuilder, descriptor, rule.TagName);
+                }
+            }
+        }
+
+        // Build the final dictionary with immutable arrays.
+        var map = new Dictionary<string, ImmutableArray<TagHelperDescriptor>>(capacity: mapBuilder.Count, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (key, value) in mapBuilder)
+        {
+            var tagName = tagNamePrefix + key;
+            if (value is List<TagHelperDescriptor> builder)
+            {
+                map[tagName] = [.. builder];
+                ListPool<TagHelperDescriptor>.Default.Return(builder);
+            }
+            else
+            {
+                Debug.Assert(value is TagHelperDescriptor);
+                map[tagName] = [(TagHelperDescriptor)value];
+            }
+        }
+
+        tagNameToDescriptorsMap = new ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>>(map);
+
+        // Build the catch all descriptors array.
+        catchAllDescriptors = catchAllBuilder.ToImmutableAndClear();
+
+        static void AddToMapBuilder(Dictionary<string, object> mapBuilder, TagHelperDescriptor descriptor, string tagName)
+        {
+            if (!mapBuilder.TryGetValue(tagName, out var value))
+            {
+                // First descriptor for this tag name, just store it directly.
+                mapBuilder[tagName] = descriptor;
+            }
+            else
+            {
+                // If we have only seen a single descriptor for this tag name, upgrade to a list.
+                if (value is not List<TagHelperDescriptor> builder)
+                {
+                    Debug.Assert(value is TagHelperDescriptor);
+
+                    var existingDescriptor = (TagHelperDescriptor)value;
+                    builder = ListPool<TagHelperDescriptor>.Default.Get();
+                    builder.Add(existingDescriptor);
+
+                    mapBuilder[tagName] = builder;
+                }
+
+                // Add the given descriptor to the list.
+                builder.Add(descriptor);
+            }
+        }
+    }
+
+
+    public static void ProcessDescriptorsCommit3(
         ImmutableArray<TagHelperDescriptor> descriptors,
         string? tagNamePrefix,
         out ReadOnlyDictionary<string, ImmutableArray<TagHelperDescriptor>> tagNameToDescriptorsMap,
@@ -59,8 +200,9 @@ internal sealed class TagHelperBinder
         // Build the final dictionary with immutable arrays
         var map = new Dictionary<string, ImmutableArray<TagHelperDescriptor>>(capacity: builderMap.Count, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var (tagName, builder) in builderMap)
+        foreach (var (key, builder) in builderMap)
         {
+            var tagName = tagNamePrefix + key;
             map.Add(tagName, builder.ToImmutable());
         }
 
@@ -96,9 +238,9 @@ internal sealed class TagHelperBinder
                     else
                     {
                         // This is a specific tag name, we need to add it to the map.
-                        var tagName = tagNamePrefix + rule.TagName;
+                        //var tagName = tagNamePrefix + rule.TagName;
 
-                        if (!builderMap.TryGetValue(tagName, out var builder))
+                        if (!builderMap.TryGetValue(rule.TagName, out var builder))
                         {
                             builder = default;
                         }
@@ -106,10 +248,10 @@ internal sealed class TagHelperBinder
                         builder.IncreaseSize();
 
                         // Copy back to the dictionary.
-                        builderMap[tagName] = builder;
+                        builderMap[rule.TagName] = builder;
 
                         // Ensure we visit tagName and descriptor in the next pass.
-                        toVisit.Add((tagName, descriptor));
+                        toVisit.Add((rule.TagName, descriptor));
                     }
                 }
             }
