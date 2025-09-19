@@ -19,7 +19,7 @@ internal sealed class KeyTagHelperDescriptorProvider() : TagHelperDescriptorProv
 
         var compilation = context.Compilation;
 
-        var renderTreeBuilderType = compilation.GetTypeByMetadataName(ComponentsApi.RenderTreeBuilder.FullTypeName);
+        var renderTreeBuilderType = compilation.GetWellKnownType(WellKnownType.RenderTreeBuilder);
         if (renderTreeBuilderType == null)
         {
             // If we can't find RenderTreeBuilder, then just bail. We won't be able to compile the

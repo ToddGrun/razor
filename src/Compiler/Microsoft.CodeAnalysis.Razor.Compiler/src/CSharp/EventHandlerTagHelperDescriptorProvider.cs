@@ -18,7 +18,7 @@ internal sealed class EventHandlerTagHelperDescriptorProvider : TagHelperDescrip
 
         var compilation = context.Compilation;
 
-        if (compilation.GetTypeByMetadataName(ComponentsApi.EventHandlerAttribute.FullTypeName) is not INamedTypeSymbol eventHandlerAttribute)
+        if (compilation.GetWellKnownType(WellKnownType.EventHandlerAttribute) is not INamedTypeSymbol eventHandlerAttribute)
         {
             // If we can't find EventHandlerAttribute, then just bail. We won't discover anything.
             return;

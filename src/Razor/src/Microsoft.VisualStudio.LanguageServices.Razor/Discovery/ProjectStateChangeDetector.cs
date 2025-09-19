@@ -8,7 +8,6 @@ using System.ComponentModel.Composition;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Razor;
-using Microsoft.AspNetCore.Razor.Language.Components;
 using Microsoft.AspNetCore.Razor.PooledObjects;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -284,7 +283,7 @@ internal partial class ProjectStateChangeDetector : IRazorStartupService, IDispo
             return false;
         }
 
-        var componentType = semanticModel.Compilation.GetTypeByMetadataName(ComponentsApi.IComponent.MetadataName);
+        var componentType = semanticModel.Compilation.GetWellKnownType(WellKnownType.IComponent);
         if (componentType is null)
         {
             // IComponent is not available in the compilation.

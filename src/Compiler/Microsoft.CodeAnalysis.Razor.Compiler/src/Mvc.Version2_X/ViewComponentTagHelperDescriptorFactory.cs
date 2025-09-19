@@ -41,10 +41,10 @@ internal class ViewComponentTagHelperDescriptorFactory
 
     public ViewComponentTagHelperDescriptorFactory(Compilation compilation)
     {
-        _viewComponentAttributeSymbol = compilation.GetTypeByMetadataName(ViewComponentTypes.ViewComponentAttribute);
-        _genericTaskSymbol = compilation.GetTypeByMetadataName(ViewComponentTypes.GenericTask);
-        _taskSymbol = compilation.GetTypeByMetadataName(ViewComponentTypes.Task);
-        _iDictionarySymbol = compilation.GetTypeByMetadataName(ViewComponentTypes.IDictionary);
+        _viewComponentAttributeSymbol = compilation.GetWellKnownType(WellKnownType.ViewComponentAttribute);
+        _genericTaskSymbol = compilation.GetWellKnownType(WellKnownType.GenericTask);
+        _taskSymbol = compilation.GetWellKnownType(WellKnownType.Task);
+        _iDictionarySymbol = compilation.GetWellKnownType(WellKnownType.IDictionary);
     }
 
     public virtual TagHelperDescriptor CreateDescriptor(INamedTypeSymbol type)

@@ -19,7 +19,7 @@ internal sealed class RefTagHelperDescriptorProvider() : TagHelperDescriptorProv
 
         var compilation = context.Compilation;
 
-        var elementReference = compilation.GetTypeByMetadataName(ComponentsApi.ElementReference.FullTypeName);
+        var elementReference = compilation.GetWellKnownType(WellKnownType.ElementReference);
         if (elementReference == null)
         {
             // If we can't find ElementRef, then just bail. We won't be able to compile the

@@ -3,17 +3,21 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Razor.Language;
 
-namespace Microsoft.CodeAnalysis.Razor.Compiler.CSharp;
+namespace Microsoft.CodeAnalysis.Razor;
 
 internal static class CompilationExtensions
 {
+    public static INamedTypeSymbol? GetWellKnownType(this Compilation compilation, WellKnownType wellKnownType)
+        =>  CompilationCache.GetWellKnownTypeData(compilation).GetTypeByMetadataName(wellKnownType);
+
     public static bool HasAddComponentParameter(this Compilation compilation)
     {
-        return compilation.GetTypesByMetadataName("Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder")
-            .Any(static t =>
-                t.DeclaredAccessibility == Accessibility.Public &&
-                t.GetMembers("AddComponentParameter")
-                    .Any(static m => m.DeclaredAccessibility == Accessibility.Public));
+        var renderTreeBuilder = compilation.GetWellKnownType(WellKnownType.RenderTreeBuilder);
+
+        return renderTreeBuilder != null
+            && renderTreeBuilder.DeclaredAccessibility == Accessibility.Public
+            && renderTreeBuilder.GetMembers("AddComponentParameter").Any(static m => m.DeclaredAccessibility == Accessibility.Public);
     }
 }

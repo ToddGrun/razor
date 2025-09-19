@@ -19,7 +19,7 @@ internal sealed class RenderModeTagHelperDescriptorProvider() : TagHelperDescrip
 
         var compilation = context.Compilation;
 
-        var iComponentRenderMode = compilation.GetTypeByMetadataName(ComponentsApi.IComponentRenderMode.FullTypeName);
+        var iComponentRenderMode = compilation.GetWellKnownType(WellKnownType.IComponentRenderMode);
         if (iComponentRenderMode == null)
         {
             // If we can't find IComponentRenderMode, then just bail. We won't be able to compile the

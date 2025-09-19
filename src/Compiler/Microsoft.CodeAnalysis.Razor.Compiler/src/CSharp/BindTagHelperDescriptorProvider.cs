@@ -86,7 +86,7 @@ internal sealed class BindTagHelperDescriptorProvider() : TagHelperDescriptorPro
         // We provide a good set of attributes that map to the HTML dom. This set is user extensible.
         var compilation = context.Compilation;
 
-        var bindMethods = compilation.GetTypeByMetadataName(ComponentsApi.BindConverter.FullTypeName);
+        var bindMethods = compilation.GetWellKnownType(WellKnownType.BindConverter);
         if (bindMethods == null)
         {
             // If we can't find BindConverter, then just bail. We won't be able to compile the
@@ -102,8 +102,8 @@ internal sealed class BindTagHelperDescriptorProvider() : TagHelperDescriptorPro
         // Tag Helper definition for case #1. This is the most general case.
         context.Results.Add(s_fallbackBindTagHelper.Value);
 
-        var bindElementAttribute = compilation.GetTypeByMetadataName(ComponentsApi.BindElementAttribute.FullTypeName);
-        var bindInputElementAttribute = compilation.GetTypeByMetadataName(ComponentsApi.BindInputElementAttribute.FullTypeName);
+        var bindElementAttribute = compilation.GetWellKnownType(WellKnownType.BindElementAttribute);
+        var bindInputElementAttribute = compilation.GetWellKnownType(WellKnownType.BindInputElementAttribute);
 
         if (bindElementAttribute == null || bindInputElementAttribute == null)
         {

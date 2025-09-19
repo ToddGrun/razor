@@ -18,7 +18,7 @@ internal sealed class SplatTagHelperDescriptorProvider : TagHelperDescriptorProv
 
         var compilation = context.Compilation;
 
-        var renderTreeBuilder = compilation.GetTypeByMetadataName(ComponentsApi.RenderTreeBuilder.FullTypeName);
+        var renderTreeBuilder = compilation.GetWellKnownType(WellKnownType.RenderTreeBuilder);
         if (renderTreeBuilder == null)
         {
             // If we can't find RenderTreeBuilder, then just bail. We won't be able to compile the

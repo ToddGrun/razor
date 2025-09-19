@@ -22,9 +22,9 @@ public sealed class ComponentParameterNullableWarningSuppressor : DiagnosticSupp
 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
-        var editorRequiredSymbol = context.Compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.EditorRequiredAttribute");
-        var parameterSymbol = context.Compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.ParameterAttribute");
-        var componentSymbol = context.Compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.IComponent");
+        var editorRequiredSymbol = context.Compilation.GetWellKnownType(WellKnownType.EditorRequiredAttribute);
+        var parameterSymbol = context.Compilation.GetWellKnownType(WellKnownType.ParameterAttribute);
+        var componentSymbol = context.Compilation.GetWellKnownType(WellKnownType.IComponent);
 
         if (parameterSymbol is null || editorRequiredSymbol is null || componentSymbol is null)
         {

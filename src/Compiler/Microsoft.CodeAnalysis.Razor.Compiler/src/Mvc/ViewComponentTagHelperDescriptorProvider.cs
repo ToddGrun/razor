@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Razor;
 using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.AspNetCore.Razor.PooledObjects;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Razor;
 
 namespace Microsoft.AspNetCore.Mvc.Razor.Extensions;
 
@@ -17,8 +18,8 @@ public sealed class ViewComponentTagHelperDescriptorProvider : TagHelperDescript
 
         var compilation = context.Compilation;
 
-        var vcAttribute = compilation.GetTypeByMetadataName(ViewComponentTypes.ViewComponentAttribute);
-        var nonVCAttribute = compilation.GetTypeByMetadataName(ViewComponentTypes.NonViewComponentAttribute);
+        var vcAttribute = compilation.GetWellKnownType(WellKnownType.ViewComponentAttribute);
+        var nonVCAttribute = compilation.GetWellKnownType(WellKnownType.NonViewComponentAttribute);
         if (vcAttribute == null || vcAttribute.TypeKind == TypeKind.Error)
         {
             // Could not find attributes we care about in the compilation. Nothing to do.
