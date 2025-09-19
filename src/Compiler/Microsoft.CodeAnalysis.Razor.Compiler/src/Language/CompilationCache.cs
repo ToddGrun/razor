@@ -13,7 +13,7 @@ internal sealed partial class CompilationCache
     public static WellKnownTypeData GetWellKnownTypeData(Compilation compilation)
     {
         var entry = GetCacheEntry(compilation);
-        entry.GetWellKnownTypeData ??= new WellKnownTypeData(compilation);
+        entry.GetWellKnownTypeData ??= new WellKnownTypeData();
 
         return entry.GetWellKnownTypeData;
     }

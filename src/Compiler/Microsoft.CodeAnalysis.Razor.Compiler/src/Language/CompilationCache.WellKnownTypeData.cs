@@ -8,12 +8,11 @@ namespace Microsoft.AspNetCore.Razor.Language;
 
 internal partial class CompilationCache
 {
-    internal sealed class WellKnownTypeData(Compilation compilation)
+    internal sealed class WellKnownTypeData
     {
-        private readonly Compilation _compilation = compilation;
         private readonly INamedTypeSymbol?[] _getTypeByMetadataNameCache = new INamedTypeSymbol?[WellKnownTypeNames.Names.Length];
 
-        public INamedTypeSymbol? GetTypeByMetadataName(WellKnownType wellKnownType)
+        public INamedTypeSymbol? GetTypeByMetadataName(WellKnownType wellKnownType, Compilation compilation)
         {
             var cachedSymbol = _getTypeByMetadataNameCache[(int)wellKnownType];
 
@@ -22,7 +21,7 @@ internal partial class CompilationCache
             if (cachedSymbol is null)
             {
                 var fullyQualifiedMetadataName = wellKnownType.ToFullyQualifiedTypeName();
-                cachedSymbol = _compilation.GetTypeByMetadataName(fullyQualifiedMetadataName);
+                cachedSymbol = compilation.GetTypeByMetadataName(fullyQualifiedMetadataName);
 
                 _getTypeByMetadataNameCache[(int)wellKnownType] = cachedSymbol;
             }

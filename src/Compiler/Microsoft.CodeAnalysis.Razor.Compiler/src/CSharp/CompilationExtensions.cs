@@ -10,7 +10,7 @@ namespace Microsoft.CodeAnalysis.Razor;
 internal static class CompilationExtensions
 {
     public static INamedTypeSymbol? GetWellKnownType(this Compilation compilation, WellKnownType wellKnownType)
-        =>  CompilationCache.GetWellKnownTypeData(compilation).GetTypeByMetadataName(wellKnownType);
+        =>  CompilationCache.GetWellKnownTypeData(compilation).GetTypeByMetadataName(wellKnownType, compilation);
 
     public static bool HasAddComponentParameter(this Compilation compilation)
     {
