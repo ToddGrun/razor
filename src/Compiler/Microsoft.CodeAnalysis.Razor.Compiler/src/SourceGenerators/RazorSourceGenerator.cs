@@ -33,6 +33,51 @@ namespace Microsoft.NET.Sdk.Razor.SourceGenerators
             _testSuppressUniqueIds = testUniqueIds;
         }
 
+        public sealed class MetadataReferenceAcrossCompilation : IEquatable<MetadataReferenceAcrossCompilation>
+        {
+            public readonly WeakReference<Compilation> Compilation;
+            public readonly MetadataReference MetadataReference;
+
+            public MetadataReferenceAcrossCompilation(MetadataReference metadataReference, Compilation compilation)
+            {
+                MetadataReference = metadataReference;
+                Compilation = new WeakReference<Compilation>(compilation);
+            }
+
+            public bool Equals(MetadataReferenceAcrossCompilation? other)
+            {
+                if (other is null)
+                {
+                    return false;
+                }
+
+                if (!Compilation.TryGetTarget(out var compilation)
+                    && !other.Compilation.TryGetTarget(out compilation))
+                {
+                    return false;
+                }
+
+                var mySymbol = compilation.GetAssemblyOrModuleSymbol(MetadataReference);
+                var otherSymbol = compilation.GetAssemblyOrModuleSymbol(other.MetadataReference);
+
+                if (SymbolEqualityComparer.Default.Equals(mySymbol, otherSymbol))
+                {
+                    return true;
+                }
+
+                if (mySymbol is IAssemblySymbol myAssembly && otherSymbol is IAssemblySymbol otherAssembly)
+                {
+                    var oldModuleMVIDs = myAssembly.Modules.Select(GetMVID);
+                    var newModuleMVIDs = otherAssembly.Modules.Select(GetMVID);
+                    return oldModuleMVIDs.SequenceEqual(newModuleMVIDs);
+
+                    static Guid GetMVID(IModuleSymbol m) => m.GetMetadata()?.GetModuleVersionId() ?? Guid.Empty;
+                }
+
+                return false;
+            }
+        }
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             var analyzerConfigOptions = context.AnalyzerConfigOptionsProvider;
@@ -143,61 +188,20 @@ namespace Microsoft.NET.Sdk.Razor.SourceGenerators
                 })
                 .WithLambdaComparer(static (a, b) => a!.SequenceEqual(b!));
 
-            var tagHelpersFromReferences = compilation
-                .Combine(razorSourceGeneratorOptions)
-                .Combine(hasRazorFiles)
-                .WithLambdaComparer(static (a, b) =>
-                {
-                    var ((compilationA, razorSourceGeneratorOptionsA), hasRazorFilesA) = a;
-                    var ((compilationB, razorSourceGeneratorOptionsB), hasRazorFilesB) = b;
-
-                    // When using the generator cache in the compiler it's possible to encounter metadata references that are different instances
-                    // but ultimately represent the same underlying assembly. We compare the module version ids to determine if the references are the same
-                    if (!compilationA.References.SequenceEqual(compilationB.References, new LambdaComparer<MetadataReference>((old, @new) =>
-                    {
-                        if (ReferenceEquals(old, @new))
-                        {
-                            return true;
-                        }
-
-                        if (old is null || @new is null)
-                        {
-                            return false;
-                        }
-
-                        var oldSymbol = compilationA.GetAssemblyOrModuleSymbol(old);
-                        var newSymbol = compilationB.GetAssemblyOrModuleSymbol(@new);
-
-                        if (SymbolEqualityComparer.Default.Equals(oldSymbol, newSymbol))
-                        {
-                            return true;
-                        }
-
-                        if (oldSymbol is IAssemblySymbol oldAssembly && newSymbol is IAssemblySymbol newAssembly)
-                        {
-                            var oldModuleMVIDs = oldAssembly.Modules.Select(GetMVID);
-                            var newModuleMVIDs = newAssembly.Modules.Select(GetMVID);
-                            return oldModuleMVIDs.SequenceEqual(newModuleMVIDs);
-
-                            static Guid GetMVID(IModuleSymbol m) => m.GetMetadata()?.GetModuleVersionId() ?? Guid.Empty;
-                        }
-
-                        return false;
-                    })))
-                    {
-                        return false;
-                    }
-
-                    if (razorSourceGeneratorOptionsA != razorSourceGeneratorOptionsB)
-                    {
-                        return false;
-                    }
-
-                    return hasRazorFilesA == hasRazorFilesB;
-                })
+            var tagHelpersFromReferences = metadataRefs
+                .Combine(compilation)
                 .Select(static (pair, cancellationToken) =>
                 {
-                    var ((compilation, razorSourceGeneratorOptions), hasRazorFiles) = pair;
+                    var (metadataReference, compilation) = pair;
+
+                    return new MetadataReferenceAcrossCompilation(metadataReference, compilation);
+                })
+                .Combine(compilation)
+                .Combine(razorSourceGeneratorOptions)
+                .Combine(hasRazorFiles)
+                .Select(static (pair, cancellationToken) =>
+                {
+                    var (((metadataReferenceAcrossCompilation, compilation), razorSourceGeneratorOptions), hasRazorFiles) = pair;
                     if (!hasRazorFiles)
                     {
                         // If there's no razor code in this app, don't do anything.
@@ -211,24 +215,40 @@ namespace Microsoft.NET.Sdk.Razor.SourceGenerators
                     // So, we start with a larger capacity to avoid extra array copies.
                     var results = new List<TagHelperDescriptor>(capacity: 128);
 
-                    foreach (var reference in compilation.References)
+                    if (compilation.GetAssemblyOrModuleSymbol(metadataReferenceAcrossCompilation.MetadataReference) is IAssemblySymbol assembly)
                     {
-                        if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol assembly)
-                        {
-                            tagHelperFeature.CollectDescriptors(assembly, results, cancellationToken);
-                        }
+                        tagHelperFeature.CollectDescriptors(assembly, results, cancellationToken);
                     }
 
                     RazorSourceGeneratorEventSource.Log.DiscoverTagHelpersFromReferencesStop();
 
                     return results;
-                });
+                })
+                .Collect();
 
             var allTagHelpers = tagHelpersFromCompilation
                 .Combine(tagHelpersFromReferences)
                 .Select(static (pair, _) =>
                 {
-                    return AllTagHelpers.Create(tagHelpersFromCompilation: pair.Left, tagHelpersFromReferences: pair.Right);
+                    var size = 0;
+                    foreach (var tagHelpersFromReference in pair.Right)
+                    {
+                        if (tagHelpersFromReference is not null)
+                        {
+                            size += tagHelpersFromReference.Count;
+                        }
+                    }
+
+                    var mergedTagHelpersFromReferences = new List<TagHelperDescriptor>(size);
+                    foreach (var tagHelpersFromReference in pair.Right)
+                    {
+                        if (tagHelpersFromReference is not null)
+                        {
+                            mergedTagHelpersFromReferences.AddRange(tagHelpersFromReference);
+                        }
+                    }
+
+                    return AllTagHelpers.Create(tagHelpersFromCompilation: pair.Left, tagHelpersFromReferences: mergedTagHelpersFromReferences);
                 });
 
             var withOptions = sourceItems
