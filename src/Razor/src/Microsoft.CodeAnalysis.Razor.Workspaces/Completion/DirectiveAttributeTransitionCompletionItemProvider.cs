@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Microsoft.CodeAnalysis.Razor.Completion;
 
-internal class DirectiveAttributeTransitionCompletionItemProvider(LanguageServerFeatureOptions languageServerFeatureOptions) : DirectiveAttributeCompletionItemProviderBase
+internal class DirectiveAttributeTransitionCompletionItemProvider(LanguageServerFeatureOptions languageServerFeatureOptions) : IRazorCompletionItemProvider
 {
     private const string DisplayText = "@...";
     private static readonly DirectiveCompletionDescription s_descriptionInfo = new(SR.Blazor_directive_attributes);
@@ -49,7 +49,7 @@ internal class DirectiveAttributeTransitionCompletionItemProvider(LanguageServer
 
     private readonly LanguageServerFeatureOptions _languageServerFeatureOptions = languageServerFeatureOptions;
 
-    public override ImmutableArray<RazorCompletionItem> GetCompletionItems(RazorCompletionContext context)
+    public ImmutableArray<RazorCompletionItem> GetCompletionItems(RazorCompletionContext context)
     {
         if (!context.SyntaxTree.Options.FileKind.IsComponent())
         {
@@ -70,7 +70,7 @@ internal class DirectiveAttributeTransitionCompletionItemProvider(LanguageServer
             return Completions;
         }
 
-        if (!TryGetAttributeInfo(owner, out var prefixLocation, out var attributeName, out var attributeNameLocation, out _, out _))
+        if (!DirectiveAttributeCompletionItemProviderBase.TryGetAttributeInfo(owner, out var prefixLocation, out var attributeName, out var attributeNameLocation, out _, out _))
         {
             return [];
         }

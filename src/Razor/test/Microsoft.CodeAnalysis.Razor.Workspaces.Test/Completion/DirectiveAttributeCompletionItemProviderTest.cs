@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Razor.Language.Syntax;
 using Microsoft.AspNetCore.Razor.Test.Common;
 using Xunit;
 using Xunit.Abstractions;
-using RazorSyntaxNode = Microsoft.AspNetCore.Razor.Language.Syntax.SyntaxNode;
 
 namespace Microsoft.CodeAnalysis.Razor.Completion;
 
@@ -165,11 +164,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_NoDescriptorsForTag_ReturnsEmptyCollection()
     {
         // Arrange
-        var owner = GetOwner("<foobarbaz @bin$$></foobarbar>");
         var documentContext = TagHelperDocumentContext.Create(string.Empty, tagHelpers: []);
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@bin",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner!, "@bin", "foobarbaz", [], documentContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, documentContext);
 
         // Assert
         Assert.Empty(completions);
@@ -183,10 +187,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
         descriptor.BoundAttributeDescriptor(boundAttribute => boundAttribute.Name = "Test");
         descriptor.TagMatchingRule(rule => rule.RequireTagName("*"));
         var documentContext = TagHelperDocumentContext.Create(string.Empty, [descriptor.Build()]);
-        var owner = GetOwner("<input @bin$$></input>");
+
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@bin",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@bin", "input", [], documentContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, documentContext);
 
         // Assert
         Assert.Empty(completions);
@@ -197,10 +207,17 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     {
         // Arrange
         var attributeNames = ImmutableArray.Create("@bind");
-        var owner = GetOwner("<input @bind$$></input>");
+        var documentContext = TagHelperDocumentContext.Create(string.Empty, tagHelpers: []);
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            ExistingAttributes = attributeNames,
+            SelectedAttributeName = "@bind",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@bind", "input", attributeNames, _defaultTagHelperContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, documentContext);
 
         // Assert
         AssertContains(completions, "bind=\"$0\"", "@bind", ["=", ":"]);
@@ -210,10 +227,15 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_NonIndexer_ReturnsCompletion()
     {
         // Arrange
-        var owner = GetOwner("<input @$$></input>");
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", [], _defaultTagHelperContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind=\"$0\"", "@bind", ["=", ":"]);
@@ -223,10 +245,15 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_NonIndexer_ReturnsCompletionWithEqualsCommitInsertFalse()
     {
         // Arrange
-        var owner = GetOwner("<input @$$></input>");
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", [], _defaultTagHelperContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind=\"$0\"", "@bind", [new RazorCommitCharacter("=", Insert: false), new RazorCommitCharacter(":")]);
@@ -236,11 +263,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_WithNoAutoQuotesOption_ReturnsNonQuotedSnippet()
     {
         // Arrange
-        var owner = GetOwner("<input @$$></input>");
         var noAutoQuotesRazorCompletionOptions = new RazorCompletionOptions(SnippetsSupported: true, AutoInsertAttributeQuotes: false, CommitElementsWithSpace: true, UseVsCodeCompletionCommitCharacters: false);
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@",
+            Options = noAutoQuotesRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", [], _defaultTagHelperContext, noAutoQuotesRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind=$0", "@bind", ["=", ":"]);
@@ -250,11 +282,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_WithNoSnippetsOption_ReturnsNoSnippets()
     {
         // Arrange
-        var owner = GetOwner("<input @$$></input>");
         var noAutoQuotesRazorCompletionOptions = new RazorCompletionOptions(SnippetsSupported: false, AutoInsertAttributeQuotes: true, CommitElementsWithSpace: true, UseVsCodeCompletionCommitCharacters: false);
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@",
+            Options = noAutoQuotesRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", [], _defaultTagHelperContext, noAutoQuotesRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind", "@bind", ["=", ":"]);
@@ -264,11 +301,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_ExistingAttrubteWithValue_ReturnsNoSnippets()
     {
         // Arrange
-        var owner = GetOwner("<input @bi$$nd=\"foo\"></input>");
         var noAutoQuotesRazorCompletionOptions = new RazorCompletionOptions(SnippetsSupported: false, AutoInsertAttributeQuotes: true, CommitElementsWithSpace: true, UseVsCodeCompletionCommitCharacters: false);
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@",
+            Options = noAutoQuotesRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", [], _defaultTagHelperContext, noAutoQuotesRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind", "@bind", ["=", ":"]);
@@ -278,10 +320,15 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     public void GetAttributeCompletions_Indexer_ReturnsCompletion()
     {
         // Arrange
-        var owner = GetOwner("<input @$$></input>");
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            SelectedAttributeName = "@",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", [], _defaultTagHelperContext, _defaultRazorCompletionOptions);
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind-", "@bind-...", ImmutableArray<string>.Empty);
@@ -292,10 +339,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
     {
         // Arrange
         var attributeNames = ImmutableArray.Create("@bind", "@");
-        var owner = GetOwner("<input @$$></input>");
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            ExistingAttributes = attributeNames,
+            SelectedAttributeName = "@",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", attributeNames, _defaultTagHelperContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertContains(completions, "bind=\"$0\"", "@bind", ["=", ":"]);
@@ -314,10 +367,16 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
             "@bind:set",
             "@bind:after",
             "@");
-        var owner = GetOwner("<input @$$></input>");
+        var provider = new DirectiveAttributeCompletionItemProvider();
+        var context = new DirectiveAttributeCompletionContext()
+        {
+            ExistingAttributes = attributeNames,
+            SelectedAttributeName = "@",
+            Options = _defaultRazorCompletionOptions
+        };
 
         // Act
-        var completions = DirectiveAttributeCompletionItemProvider.GetAttributeCompletions(owner, "@", "input", attributeNames, _defaultTagHelperContext, _defaultRazorCompletionOptions);
+        var completions = provider.GetAttributeCompletions("input", context, _defaultTagHelperContext);
 
         // Assert
         AssertDoesNotContain(completions, "bind", "@bind");
@@ -364,10 +423,5 @@ public class DirectiveAttributeCompletionItemProviderTest : RazorToolingIntegrat
         owner = AbstractRazorCompletionFactsService.AdjustSyntaxNodeForWordBoundary(owner, testCode.Position);
 
         return new RazorCompletionContext(codeDocument, testCode.Position, owner, syntaxTree, tagHelperContext);
-    }
-
-    private RazorSyntaxNode GetOwner(string testCodeText)
-    {
-        return CreateRazorCompletionContext(testCodeText).Owner!;
     }
 }
